@@ -140,26 +140,46 @@ export default {
       errMsg: false
     };
   },
+  created() {
+    this.reFetch();
+  },
   methods: {
+    subscribeToUpdate(ticketName) {
+      const intervalId = setInterval(async () => {
+          const f = await fetch(
+            `https://min-api.cryptocompare.com/data/price?fsym=${ticketName}&tsyms=USD&api_key=0206af21ee96ce9016bbb1ee54717bdfebf17b1be168f34514cc4fc2afb9286d`
+          );
+          const data = await f.json()
+          this.tickets.find(ticket => ticket.name === ticketName).price = data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2)
+
+          if(this.sel?.name === ticketName) {
+            this.graphs.push(data.USD)
+          }
+        }, 3000)
+        this.tickets.find(ticket => ticket.name === ticketName).intervalId = intervalId;
+    },
+    reFetch() {
+      const ticketsData = localStorage.getItem('crypto-list')
+
+      if (ticketsData) {
+        this.tickets = JSON.parse(ticketsData);
+        console.log(this.tickets)
+      }
+
+      this.tickets.forEach(ticket => {
+          this.subscribeToUpdate(ticket.name)
+        })
+    },
     addTicket() {
       if (this.tickets.find(ticket => ticket.name.toLowerCase() === this.title.toLowerCase())) {
         this.errMsg = true
       } else {
         const currentTicket = { id: Date.now(), name: this.title.toUpperCase(), price: '-' };
         this.tickets.push(currentTicket);
-        const lastT = this.tickets[this.tickets.length - 1]
 
-        setInterval(async () => {
-          const f = await fetch(
-            `https://min-api.cryptocompare.com/data/price?fsym=${currentTicket.name}&tsyms=USD&api_key=0206af21ee96ce9016bbb1ee54717bdfebf17b1be168f34514cc4fc2afb9286d`
-          );
-          const data = await f.json()
-          lastT.price = data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2)
+        localStorage.setItem('crypto-list', JSON.stringify(this.tickets))
 
-          if(this.sel?.name === currentTicket.name) {
-            this.graphs.push(data.USD)
-          }
-        }, 2000)
+        this.subscribeToUpdate(currentTicket.name)
 
         this.title = '';
         this.errMsg = false
@@ -167,6 +187,8 @@ export default {
     },
     removeTicket(t) {
       this.tickets = this.tickets.filter((ticket) => ticket.id != t.id);
+      localStorage.setItem('crypto-list', JSON.stringify(this.tickets));
+      clearInterval(t.intervalId)
 
       if (t === this.sel) {
         this.sel = null;

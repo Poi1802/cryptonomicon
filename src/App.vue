@@ -159,6 +159,8 @@
 </template>
 
 <script lang="js">
+import { subToTicker, unSubFromTicker } from './api';
+
 export default {
   data() {
     return {
@@ -223,47 +225,41 @@ export default {
     }
   },
   methods: {
-    subscribeToUpdate(ticketName) {
-      const intervalId = setInterval(async () => {
-          const f = await fetch(
-            `https://min-api.cryptocompare.com/data/price?fsym=${ticketName}&tsyms=USD&api_key=0206af21ee96ce9016bbb1ee54717bdfebf17b1be168f34514cc4fc2afb9286d`
-          );
-          const data = await f.json()
-          this.tickets.find(ticket => ticket.name === ticketName).price = data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2)
-
-          if(this.sel?.name === ticketName) {
-            this.graphs.push(data.USD)
-          }
-        }, 3000)
-        this.tickets.find(ticket => ticket.name === ticketName).intervalId = intervalId;
+    updatePrice(ticket, newPrice) {
+      this.tickets.find(ticker => ticker.name === ticket).price = newPrice
     },
     reFetch() {
       const ticketsData = localStorage.getItem('crypto-list')
 
       if (ticketsData) {
         this.tickets = JSON.parse(ticketsData);
-      }
-
-      this.tickets.forEach(ticket => {
-          this.subscribeToUpdate(ticket.name)
+        this.tickets.forEach(ticket => {
+          subToTicker(ticket.name, newPrice => {
+            this.updatePrice(ticket.name, newPrice)
+          })
         })
+      }
     },
     addTicket() {
       if (this.tickets.find(ticket => ticket.name.toLowerCase() === this.title.toLowerCase())) {
         this.errMsg = true
-      } else {
-        const currentTicket = { id: Date.now(), name: this.title.toUpperCase(), price: '-' };
-        this.tickets = [...this.tickets, currentTicket];
-
-        this.subscribeToUpdate(currentTicket.name)
-
-        this.title = '';
-        this.errMsg = false
+        return;
       }
+
+      const currentTicket = { id: Date.now(), name: this.title.toUpperCase(), price: '-' };
+      this.tickets = [...this.tickets, currentTicket];
+
+      subToTicker(currentTicket.name, newPrice => {
+        this.updatePrice(currentTicket.name, newPrice)
+      })
+
+      this.title = '';
+      this.search = ''
+      this.errMsg = false
     },
     removeTicket(t) {
       this.tickets = this.tickets.filter((ticket) => ticket.id != t.id);
-      clearInterval(t.intervalId)
+      unSubFromTicker(t.name)
 
       if (t === this.sel) {
         this.sel = null;

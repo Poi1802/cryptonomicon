@@ -20,7 +20,9 @@ const loadTickers = async () => {
 
       Object.entries(updatedPrices).forEach(([coin, newPrice]) => {
         const ticker = tickersHadler.get(coin) ?? [];
+
         ticker.forEach((fn) => fn(newPrice));
+        // ticker[0](newPrice);
       });
     });
 };

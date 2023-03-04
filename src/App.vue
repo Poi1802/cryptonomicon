@@ -132,7 +132,7 @@
             :style="{ height: `${graph}%` }"
             class="bg-purple-800 border w-10"></div>
         </div>
-        <button @click="closeGraph" type="button" class="absolute top-0 right-0">
+        <button @click="sel = null" type="button" class="absolute top-0 right-0">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -227,6 +227,10 @@ export default {
   methods: {
     updatePrice(ticket, newPrice) {
       this.tickets.find(ticker => ticker.name === ticket).price = newPrice
+
+      if(this.sel?.name === ticket) {
+        this.graphs.push(newPrice)
+      }
     },
     reFetch() {
       const ticketsData = localStorage.getItem('crypto-list')
@@ -270,9 +274,6 @@ export default {
         this.sel = t;
         this.graphs = []
       }
-    },
-    closeGraph() {
-      this.sel = null;
     },
     async fetchCoins() {
       try {

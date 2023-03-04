@@ -3,7 +3,7 @@ const AGREGGATE_IDX = '5';
 
 const tickersHadler = new Map();
 
-const tickersData = JSON.parse(localStorage.getItem('crypto-list'));
+const tickersBC = new BroadcastChannel('coins');
 
 const socket = new WebSocket(`wss://streamer.cryptocompare.com/v2?api_key=${API_KEY}`);
 
@@ -14,23 +14,12 @@ socket.addEventListener('message', (e) => {
     const ticker = tickersHadler.get(coin) || [];
     ticker.forEach((fn) => fn(newPrice));
 
-    tickersData.forEach((obj) => {
-      if (obj.name === coin) {
-        obj.price = newPrice;
-      }
-    });
-
-    localStorage.setItem('crypto-list', JSON.stringify(tickersData));
+    tickersBC.postMessage({ coin, newPrice });
   } else if (type === '429') {
-    setInterval(() => {
-      const storageData = JSON.parse(localStorage.getItem('crypto-list'));
-      // console.log(storageData);
-
-      storageData.forEach((obj) => {
-        const ticker = tickersHadler.get(obj.name) || [];
-        ticker.forEach((fn) => fn(obj.price));
-      });
-    }, 1000);
+    tickersBC.addEventListener('message', ({ data }) => {
+      const ticker = tickersHadler.get(data.coin) || [];
+      ticker.forEach((fn) => fn(data.newPrice));
+    });
   }
 });
 

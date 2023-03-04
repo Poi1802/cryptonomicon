@@ -1,39 +1,49 @@
 const API_KEY = '0206af21ee96ce9016bbb1ee54717bdfebf17b1be168f34514cc4fc2afb9286d';
+const AGREGGATE_IDX = '5';
 
 const tickersHadler = new Map();
 
-const loadTickers = async () => {
-  if (tickersHadler.size === 0) {
+const socket = new WebSocket(`wss://streamer.cryptocompare.com/v2?api_key=${API_KEY}`);
+
+socket.addEventListener('message', (e) => {
+  const { TYPE: type, PRICE: newPrice, FROMSYMBOL: coin } = JSON.parse(e.data);
+
+  if (type === AGREGGATE_IDX && newPrice) {
+    const ticker = tickersHadler.get(coin) || [];
+    ticker.forEach((fn) => fn(newPrice));
+  }
+});
+
+const sendMessageToWS = (message) => {
+  const stringMess = JSON.stringify(message);
+
+  if (socket.readyState === WebSocket.OPEN) {
+    socket.send(stringMess);
     return;
   }
 
-  await fetch(
-    `https://min-api.cryptocompare.com/data/pricemulti?fsyms=${[
-      ...tickersHadler.keys(),
-    ].join(',')}&tsyms=USD&api_key=${API_KEY}`
-  )
-    .then((r) => r.json())
-    .then((rawData) => {
-      const updatedPrices = Object.fromEntries(
-        Object.entries(rawData).map(([key, value]) => [key, value.USD])
-      );
-
-      Object.entries(updatedPrices).forEach(([coin, newPrice]) => {
-        const ticker = tickersHadler.get(coin) ?? [];
-
-        ticker.forEach((fn) => fn(newPrice));
-        // ticker[0](newPrice);
-      });
-    });
+  socket.addEventListener(
+    'open',
+    () => {
+      socket.send(stringMess);
+    },
+    { once: true }
+  );
 };
 
 export const subToTicker = (ticker, cb) => {
   const subscribers = tickersHadler.get(ticker) || [];
   tickersHadler.set(ticker, [...subscribers, cb]);
+  sendMessageToWS({
+    action: 'SubAdd',
+    subs: [`5~CCCAGG~${ticker}~USD`],
+  });
 };
 
 export const unSubFromTicker = (ticker) => {
   tickersHadler.delete(ticker);
+  sendMessageToWS({
+    action: 'SubRemove',
+    subs: [`5~CCCAGG~${ticker}~USD`],
+  });
 };
-
-setInterval(loadTickers, 5000);

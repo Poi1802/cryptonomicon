@@ -54,7 +54,7 @@
           <button
             @click="page--"
             :class="{
-              disabled: page === 1,
+              disabled: page <= 1,
             }"
             class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
             prev
@@ -63,7 +63,7 @@
           <button
             @click="page++"
             :class="{
-              disabled: page >= Math.ceil(tickets.length / 6),
+              disabled: hasNextPage,
             }"
             class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
             next
@@ -71,7 +71,7 @@
         </div>
         <div class="search">
           <input
-            v-model="searched"
+            v-model="search"
             class="block p-2 border-gray-300 text-gray-900 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm rounded-md"
             type="text"
             placeholder="What to find?" />
@@ -82,25 +82,29 @@
         <hr class="w-full border-t border-gray-600 my-4" />
         <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
           <div
-            v-for="ticket in searching()"
+            v-for="ticket in paginatedTick"
             @click="select(ticket)"
             :key="ticket.name"
             :class="{
-              'border-4': sel === ticket,
+              'border-2': sel === ticket,
             }"
             class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer">
             <div class="px-4 py-5 sm:p-6 text-center">
               <dt class="text-sm font-medium text-gray-500 truncate">
                 {{ ticket.name }} - USD
               </dt>
-              <dd class="mt-1 text-3xl font-semibold text-gray-900">
+              <dd
+                :class="{
+                  'text-purple-800': sel === ticket,
+                }"
+                class="mt-1 text-3xl font-semibold text-gray-900">
                 {{ ticket.price }}
               </dd>
             </div>
             <div class="w-full border-t border-gray-200"></div>
             <button
               @click.stop="removeTicket(ticket)"
-              class="flex items-center justify-center font-medium w-full bg-gray-100 px-4 py-4 sm:px-6 text-md text-gray-500 hover:text-gray-600 hover:bg-gray-200 hover:opacity-20 transition-all focus:outline-none">
+              class="remove-btn flex items-center justify-center font-medium w-full bg-gray-100 px-4 py-4 sm:px-6 text-md text-gray-500 hover:text-gray-600 hover:bg-gray-200 hover:opacity-20 transition-all focus:outline-none">
               <svg
                 class="h-5 w-5"
                 xmlns="http://www.w3.org/2000/svg"
@@ -123,7 +127,7 @@
         </h3>
         <div class="flex items-end border-gray-600 border-b border-l h-64">
           <div
-            v-for="(graph, idx) in normGraph()"
+            v-for="(graph, idx) in normGraph"
             :key="idx"
             :style="{ height: `${graph}%` }"
             class="bg-purple-800 border w-10"></div>
@@ -166,18 +170,56 @@ export default {
       graphs: [],
       errMsg: false,
       page: 1,
-      searched: ''
+      search: ''
     };
   },
   created() {
     this.reFetch();
+
     const url =  Object.fromEntries(new URL(window.location).searchParams.entries())
 
-    if (url.searched) {
-      this.searched = url.searched;
+    if (url.search) {
+      this.search = url.search;
     }
     if (url.page) {
       this.page = url.page
+      if (this.page < 1) {
+        this.page = 1
+      }
+    }
+  },
+  computed: {
+    searchedTick() {
+      return this.tickets.filter(ticket => ticket.name.includes(this.search.toUpperCase()))
+    },
+    paginatedTick() {
+      const firstEl = 3 * (this.page - 1) ;
+      const lastEl = 3 * (this.page)
+
+      if(this.search) {
+        return this.searchedTick.slice(firstEl, lastEl)
+      } else {
+        return this.tickets.slice(firstEl, lastEl)
+      }
+    },
+    hasNextPage() {
+      return this.page >= Math.ceil(this.searchedTick.length / 3)
+    },
+    normGraph() {
+      const maxBar = Math.max(...this.graphs);
+      const minBar = Math.min(...this.graphs);
+
+      if (maxBar === minBar) {
+        return this.graphs.map(() => 50)
+      } else {
+        return this.graphs.map(price => 5 + ((price - minBar) * 95) / (maxBar - minBar))
+      }
+    },
+    pageStateOptions() {
+      return {
+        page: this.page,
+        search: this.search
+      }
     }
   },
   methods: {
@@ -211,9 +253,7 @@ export default {
         this.errMsg = true
       } else {
         const currentTicket = { id: Date.now(), name: this.title.toUpperCase(), price: '-' };
-        this.tickets.push(currentTicket);
-
-        localStorage.setItem('crypto-list', JSON.stringify(this.tickets))
+        this.tickets = [...this.tickets, currentTicket];
 
         this.subscribeToUpdate(currentTicket.name)
 
@@ -223,7 +263,6 @@ export default {
     },
     removeTicket(t) {
       this.tickets = this.tickets.filter((ticket) => ticket.id != t.id);
-      localStorage.setItem('crypto-list', JSON.stringify(this.tickets));
       clearInterval(t.intervalId)
 
       if (t === this.sel) {
@@ -235,12 +274,6 @@ export default {
         this.sel = t;
         this.graphs = []
       }
-    },
-    normGraph() {
-      const maxBar = Math.max(...this.graphs);
-      const minBar = Math.min(...this.graphs);
-
-      return this.graphs.map(price => 5 + ((price - minBar) * 95) / (maxBar - minBar))
     },
     closeGraph() {
       this.sel = null;
@@ -266,36 +299,28 @@ export default {
     clickOnCoin(e) {
       this.title = e.target.innerText
       this.addTicket()
-    },
-    searching() {
-      const firstEl = 6 * (this.page - 1) ;
-      const lastEl = 6 * (this.page)
-
-      if(this.searched) {
-        const searchedTick = this.tickets.filter(ticket => ticket.name.includes(this.searched.toUpperCase()))
-        return searchedTick.slice(firstEl, lastEl)
-      } else {
-        return this.tickets.slice(firstEl, lastEl)
-      }
-    },
-    setUrl() {
-      window.history.pushState(null, document.title, `${window.location.pathname}?searched=${this.searched}&page=${this.page}`)
     }
   },
   mounted() {
     this.fetchCoins();
   },
   watch: {
+    tickets() {
+      localStorage.setItem('crypto-list', JSON.stringify(this.tickets))
+    },
+    paginatedTick() {
+      if (this.paginatedTick.length === 0 && this.page > 1) {
+        this.page--
+      }
+    },
     title() {
       this.searchCoin()
     },
-    page() {
-      this.searching();
-      this.setUrl()
+    pageStateOptions(value) {
+      this.paginatedTick;
+      window.history.pushState(null, document.title, `${window.location.pathname}?search=${value.search}&page=${value.page}`)
     },
-    searched() {
-      this.searching();
-      this.setUrl()
+    search() {
       this.page = 1
     }
   }

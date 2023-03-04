@@ -6,3 +6,8 @@
   background-color: lightgrey;
   pointer-events: none;
 }
+
+.remove-btn {
+  position: relative;
+  bottom: -5;
+}

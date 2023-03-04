@@ -49,13 +49,40 @@
           </svg>
           Добавить
         </button>
+        <hr class="w-full border-t border-gray-600 my-4" />
+        <div class="nav">
+          <button
+            @click="page--"
+            :class="{
+              disabled: page === 1,
+            }"
+            class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+            prev
+          </button>
+          page: {{ page }}
+          <button
+            @click="page++"
+            :class="{
+              disabled: page >= Math.ceil(tickets.length / 6),
+            }"
+            class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+            next
+          </button>
+        </div>
+        <div class="search">
+          <input
+            v-model="searched"
+            class="block p-2 border-gray-300 text-gray-900 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm rounded-md"
+            type="text"
+            placeholder="What to find?" />
+        </div>
       </section>
 
       <template v-if="tickets.length > 0">
         <hr class="w-full border-t border-gray-600 my-4" />
         <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
           <div
-            v-for="ticket in tickets"
+            v-for="ticket in searching()"
             @click="select(ticket)"
             :key="ticket.name"
             :class="{
@@ -137,11 +164,21 @@ export default {
       prompCoins: [],
       sel: null,
       graphs: [],
-      errMsg: false
+      errMsg: false,
+      page: 1,
+      searched: ''
     };
   },
   created() {
     this.reFetch();
+    const url =  Object.fromEntries(new URL(window.location).searchParams.entries())
+
+    if (url.searched) {
+      this.searched = url.searched;
+    }
+    if (url.page) {
+      this.page = url.page
+    }
   },
   methods: {
     subscribeToUpdate(ticketName) {
@@ -163,7 +200,6 @@ export default {
 
       if (ticketsData) {
         this.tickets = JSON.parse(ticketsData);
-        console.log(this.tickets)
       }
 
       this.tickets.forEach(ticket => {
@@ -230,6 +266,20 @@ export default {
     clickOnCoin(e) {
       this.title = e.target.innerText
       this.addTicket()
+    },
+    searching() {
+      const firstEl = 6 * (this.page - 1) ;
+      const lastEl = 6 * (this.page)
+
+      if(this.searched) {
+        const searchedTick = this.tickets.filter(ticket => ticket.name.includes(this.searched.toUpperCase()))
+        return searchedTick.slice(firstEl, lastEl)
+      } else {
+        return this.tickets.slice(firstEl, lastEl)
+      }
+    },
+    setUrl() {
+      window.history.pushState(null, document.title, `${window.location.pathname}?searched=${this.searched}&page=${this.page}`)
     }
   },
   mounted() {
@@ -238,6 +288,15 @@ export default {
   watch: {
     title() {
       this.searchCoin()
+    },
+    page() {
+      this.searching();
+      this.setUrl()
+    },
+    searched() {
+      this.searching();
+      this.setUrl()
+      this.page = 1
     }
   }
 };

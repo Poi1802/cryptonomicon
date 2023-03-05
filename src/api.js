@@ -35,13 +35,15 @@ socket.addEventListener('message', (e) => {
   }
   const BTCPrice = localStorage.getItem('BTCPrice');
 
-  newPrice *= BTCPrice;
+  if (coin !== 'BTC') {
+    newPrice *= BTCPrice;
+  }
 
   if (type === AGREGGATE_IDX && newPrice) {
     const ticker = tickersHadler.get(coin) || [];
-    ticker.forEach((fn) => fn(newPrice));
+    ticker.forEach((fn) => fn(newPrice.toFixed(3)));
 
-    tickersBC.postMessage({ coin, newPrice });
+    tickersBC.postMessage({ coin, newPrice: newPrice.toFixed(3) });
   } else if (type === '429') {
     tickersBC.onmessage = ({ data }) => {
       const ticker = tickersHadler.get(data.coin) || [];

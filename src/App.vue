@@ -87,6 +87,7 @@
             :key="ticket.name"
             :class="{
               'border-2': sel === ticket,
+              'bg-red-200': ticket.price === '-',
             }"
             class="bg-white overflow-hidden shadow rounded-lg border-purple-800 border-solid cursor-pointer">
             <div class="px-4 py-5 sm:p-6 text-center">
@@ -250,7 +251,7 @@ export default {
         return;
       }
 
-      const currentTicket = { id: Date.now(), name: this.title.toUpperCase(), price: '-' };
+      const currentTicket = { id: Date.now(), name: this.title.toUpperCase(), price: '-', exist: true };
       this.tickets = [...this.tickets, currentTicket];
 
       subToTicker(currentTicket.name, newPrice => {

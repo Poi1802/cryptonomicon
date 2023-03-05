@@ -14,4 +14,4 @@ export default defineConfig({
   },
 });
 
-process.env.BROWSER = 'chrome';
+process.env.BROWSER = 'msedge';

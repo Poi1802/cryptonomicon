@@ -30,7 +30,6 @@ socket.addEventListener('message', (e) => {
   newPrice = newPrice?.toPrecision(6);
 
   if (type === AGREGGATE_IDX && !isNaN(newPrice)) {
-    console.log(newPrice);
     const ticker = tickersHadler.get(coin) || [];
     ticker.forEach((fn) => fn(newPrice));
 

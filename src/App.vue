@@ -78,39 +78,11 @@
         </dl>
         <hr class="w-full border-t border-gray-600 my-4" />
       </template>
-      <section v-if="sel" class="relative" ref="graphs">
-        <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
-          {{ sel.name }} - USD
-        </h3>
-        <div class="flex items-end border-gray-600 border-b border-l h-64">
-          <div
-            v-for="(graph, idx) in normGraph"
-            :key="idx"
-            :style="{ height: `${graph}%` }"
-            class="bg-purple-800 border w-10"></div>
-        </div>
-        <button @click="sel = null" type="button" class="absolute top-0 right-0">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            xmlns:xlink="http://www.w3.org/1999/xlink"
-            xmlns:svgjs="http://svgjs.com/svgjs"
-            version="1.1"
-            width="30"
-            height="30"
-            x="0"
-            y="0"
-            viewBox="0 0 511.76 511.76"
-            style="enable-background: new 0 0 512 512"
-            xml:space="preserve">
-            <g>
-              <path
-                d="M436.896,74.869c-99.84-99.819-262.208-99.819-362.048,0c-99.797,99.819-99.797,262.229,0,362.048    c49.92,49.899,115.477,74.837,181.035,74.837s131.093-24.939,181.013-74.837C536.715,337.099,536.715,174.688,436.896,74.869z     M361.461,331.317c8.341,8.341,8.341,21.824,0,30.165c-4.16,4.16-9.621,6.251-15.083,6.251c-5.461,0-10.923-2.091-15.083-6.251    l-75.413-75.435l-75.392,75.413c-4.181,4.16-9.643,6.251-15.083,6.251c-5.461,0-10.923-2.091-15.083-6.251    c-8.341-8.341-8.341-21.845,0-30.165l75.392-75.413l-75.413-75.413c-8.341-8.341-8.341-21.845,0-30.165    c8.32-8.341,21.824-8.341,30.165,0l75.413,75.413l75.413-75.413c8.341-8.341,21.824-8.341,30.165,0    c8.341,8.32,8.341,21.824,0,30.165l-75.413,75.413L361.461,331.317z"
-                fill="#718096"
-                data-original="#000000"></path>
-            </g>
-          </svg>
-        </button>
-      </section>
+      <CryptoGraph
+        v-if="sel"
+        @clickClose="sel = null"
+        :lastPrice="lastPrice"
+        :sel="sel" />
     </div>
   </div>
 </template>
@@ -118,19 +90,19 @@
 <script lang="js">
 import { subToTicker, unSubFromTicker } from './api';
 import AddSection from './components/AddSection.vue'
+import CryptoGraph from './components/CryptoGraph.vue'
 
 export default {
   components: {
-    AddSection
+    AddSection,
+    CryptoGraph
   },
   data() {
     return {
+      lastPrice: 0,
       tickets: [],
 
       sel: null,
-
-      graphs: [],
-      graphsWidth: 1,
 
       errMsg: false,
 
@@ -170,16 +142,6 @@ export default {
     hasNextPage() {
       return this.page >= Math.ceil(this.searchedTick.length / 3)
     },
-    normGraph() {
-      const maxBar = Math.max(...this.graphs);
-      const minBar = Math.min(...this.graphs);
-
-      if (maxBar === minBar) {
-        return this.graphs.map(() => 50)
-      } else {
-        return this.graphs.map(price => 5 + ((price - minBar) * 95) / (maxBar - minBar))
-      }
-    },
     pageStateOptions() {
       return {
         page: this.page,
@@ -190,22 +152,7 @@ export default {
   methods: {
     updatePrice(ticket, newPrice) {
       this.tickets.find(ticker => ticker.name === ticket).price = newPrice
-      //console.log(this.graphsWidth, '-', this.graphs.length, this.graphsWidth - this.graphs.length)
-
-      if(this.sel?.name === ticket) {
-        this.graphs.push(newPrice)
-
-        this.shiftGraph()
-      }
-    },
-    calculateNumOfGraphs() {
-      this.graphsWidth = this.$refs.graphs.clientWidth / 40
-      this.shiftGraph()
-    },
-    shiftGraph() {
-      while (this.graphs.length > this.graphsWidth) {
-        this.graphs.shift()
-      }
+      this.lastPrice = Number(newPrice);
     },
     reFetch() {
       const ticketsData = localStorage.getItem('crypto-list')
@@ -251,9 +198,6 @@ export default {
 
       this.$nextTick().then(this.calculateNumOfGraphs)
     },
-  },
-  mounted() {
-    window.addEventListener('resize', this.calculateNumOfGraphs)
   },
   watch: {
     tickets() {

@@ -122,7 +122,7 @@
         </dl>
         <hr class="w-full border-t border-gray-600 my-4" />
       </template>
-      <section v-if="sel" class="relative">
+      <section v-if="sel" class="relative" ref="graphs">
         <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
           {{ sel.name }} - USD
         </h3>
@@ -167,11 +167,17 @@ export default {
     return {
       title: '',
       tickets: [],
+
       coinList: [],
       prompCoins: [],
+
       sel: null,
+
       graphs: [],
+      graphsWidth: 1,
+
       errMsg: false,
+
       page: 1,
       search: ''
     };
@@ -228,9 +234,21 @@ export default {
   methods: {
     updatePrice(ticket, newPrice) {
       this.tickets.find(ticker => ticker.name === ticket).price = newPrice
+      //console.log(this.graphsWidth, '-', this.graphs.length, this.graphsWidth - this.graphs.length)
 
       if(this.sel?.name === ticket) {
         this.graphs.push(newPrice)
+
+        this.shiftGraph()
+      }
+    },
+    calculateNumOfGraphs() {
+      this.graphsWidth = this.$refs.graphs.clientWidth / 40
+      this.shiftGraph()
+    },
+    shiftGraph() {
+      while (this.graphs.length > this.graphsWidth) {
+        this.graphs.shift()
       }
     },
     reFetch() {
@@ -275,6 +293,8 @@ export default {
         this.sel = t;
         this.graphs = []
       }
+
+      this.$nextTick().then(this.calculateNumOfGraphs)
     },
     async fetchCoins() {
       try {
@@ -301,6 +321,8 @@ export default {
   },
   mounted() {
     this.fetchCoins();
+
+    window.addEventListener('resize', this.calculateNumOfGraphs)
   },
   watch: {
     tickets() {
@@ -320,7 +342,7 @@ export default {
     },
     search() {
       this.page = 1
-    }
+    },
   }
 };
 </script>

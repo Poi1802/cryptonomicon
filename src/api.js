@@ -1,4 +1,4 @@
-const API_KEY = '7b99a6e4233fd783af7587ad2cfe2a7b5a4c0d2c1870b7b4f2de0604254b1112';
+const API_KEY = '0887e617c5c9e6f830bf08ef557d5b22974a227e3f856765da3bdb32b8da8b24';
 const AGREGGATE_IDX = '5';
 
 const tickersHadler = new Map();
@@ -116,4 +116,10 @@ export const unSubFromTicker = (ticker) => {
   if (tickersHadler.size === 0) {
     unSubFromBTC();
   }
+};
+
+export const fetchAllCoins = async () => {
+  return await fetch(
+    'https://min-api.cryptocompare.com/data/all/coinlist?summary=true'
+  ).then((res) => res.json().then((coins) => Object.values(coins.Data)));
 };

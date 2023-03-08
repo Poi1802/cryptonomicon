@@ -6,6 +6,7 @@
         @keyDownInput="errMsg = false"
         @addTicket="addTicket" />
       <hr class="w-full border-t border-gray-600 my-4" />
+      <!-- move to components -->
       <div class="nav">
         <button
           @click="page--"

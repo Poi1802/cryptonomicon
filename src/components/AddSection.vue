@@ -34,6 +34,7 @@
 
 <script>
 import AddButton from './AddButton.vue';
+import { fetchAllCoins } from '../api';
 
 export default {
   components: {
@@ -55,18 +56,6 @@ export default {
       this.$emit('addTicket', this.title);
       this.title = '';
     },
-    async fetchCoins() {
-      try {
-        const f = await fetch(
-          'https://min-api.cryptocompare.com/data/all/coinlist?summary=true'
-        );
-        const res = await f.json();
-        const coinsArr = Object.values(res.Data);
-        this.coinList = coinsArr;
-      } catch (e) {
-        console.log(e);
-      }
-    },
     searchCoin() {
       if (this.title.length) {
         const coins = this.coinList.filter((coin) =>
@@ -83,7 +72,7 @@ export default {
     },
   },
   mounted() {
-    this.fetchCoins();
+    fetchAllCoins().then((coins) => (this.coinList = coins));
   },
   watch: {
     title() {
